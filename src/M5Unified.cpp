@@ -87,7 +87,7 @@ static constexpr const uint8_t _pin_table_i2c_ex_in[][5] = {
 { board_t::board_M5VAMeter    , GPIO_NUM_6 ,GPIO_NUM_5  , GPIO_NUM_9 ,GPIO_NUM_8  },
 { board_t::board_M5AtomS3R    , GPIO_NUM_0 ,GPIO_NUM_45 , GPIO_NUM_1 ,GPIO_NUM_2  },
 { board_t::board_M5AtomS3RExt , GPIO_NUM_0 ,GPIO_NUM_45 , GPIO_NUM_1 ,GPIO_NUM_2  },
-{ board_t::board_M5AtomEchoS3R, GPIO_NUM_0 ,GPIO_NUM_45 , GPIO_NUM_1 ,GPIO_NUM_2  },
+{ board_t::board_M5AtomVoiceS3R,GPIO_NUM_0 ,GPIO_NUM_45 , GPIO_NUM_1 ,GPIO_NUM_2  },
 { board_t::board_M5AtomS3RCam , GPIO_NUM_0 ,GPIO_NUM_45 , GPIO_NUM_1 ,GPIO_NUM_2  },
 { board_t::board_M5PaperS3    , GPIO_NUM_42,GPIO_NUM_41 , GPIO_NUM_1 ,GPIO_NUM_2  },
 { board_t::board_M5StampPLC   , GPIO_NUM_15,GPIO_NUM_13 , GPIO_NUM_1 ,GPIO_NUM_2  },
@@ -112,7 +112,7 @@ static constexpr const uint8_t _pin_table_i2c_ex_in[][5] = {
 { board_t::board_M5TimerCam   , GPIO_NUM_14,GPIO_NUM_12 , GPIO_NUM_13,GPIO_NUM_4  },
 { board_t::board_M5AtomLite   , GPIO_NUM_21,GPIO_NUM_25 , GPIO_NUM_32,GPIO_NUM_26 },
 { board_t::board_M5AtomMatrix , GPIO_NUM_21,GPIO_NUM_25 , GPIO_NUM_32,GPIO_NUM_26 },
-{ board_t::board_M5AtomEcho   , GPIO_NUM_21,GPIO_NUM_25 , GPIO_NUM_32,GPIO_NUM_26 },
+{ board_t::board_M5AtomVoice  , GPIO_NUM_21,GPIO_NUM_25 , GPIO_NUM_32,GPIO_NUM_26 },
 { board_t::board_M5AtomU      , GPIO_NUM_21,GPIO_NUM_25 , GPIO_NUM_32,GPIO_NUM_26 },
 { board_t::board_M5AtomPsram  , GPIO_NUM_21,GPIO_NUM_25 , GPIO_NUM_32,GPIO_NUM_26 },
 { board_t::board_unknown      , GPIO_NUM_22,GPIO_NUM_21 , GPIO_NUM_33,GPIO_NUM_32 }, // Core2,Tough,StickC,CoreInk,Station,StampPico
@@ -206,7 +206,7 @@ static constexpr const uint8_t _pin_table_other0[][2] = {
 { board_t::board_M5Station    , GPIO_NUM_4  },
 { board_t::board_M5AtomLite   , GPIO_NUM_27 },
 { board_t::board_M5AtomMatrix , GPIO_NUM_27 },
-{ board_t::board_M5AtomEcho   , GPIO_NUM_27 },
+{ board_t::board_M5AtomVoice  , GPIO_NUM_27 },
 { board_t::board_M5AtomU      , GPIO_NUM_27 },
 { board_t::board_M5AtomPsram  , GPIO_NUM_27 },
 { board_t::board_M5StampPico  , GPIO_NUM_27 },
@@ -1226,7 +1226,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
                 board = board_t::board_M5AtomLite;
                 if ((result) == 0b111000)
                 { // Branches for AtomECHO
-                  board = board_t::board_M5AtomEcho;
+                  board = board_t::board_M5AtomVoice;
                 }
               }
             }
@@ -1374,7 +1374,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
     if (board == board_t::board_unknown) {
         /// AtomEchoS3R ?
         if(_detect_i2c_device(45, 0, 0x18)) {
-          board = board_t::board_M5AtomEchoS3R;
+          board = board_t::board_M5AtomVoiceS3R;
         }
         /// Stamp-S3Bat ?
         else if (_detect_i2c_device(48, 47, 0x6E)) {
@@ -1674,7 +1674,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
     case board_t::board_M5StickCPlus:
     case board_t::board_M5AtomLite:
     case board_t::board_M5AtomMatrix:
-    case board_t::board_M5AtomEcho:
+    case board_t::board_M5AtomVoice:
     case board_t::board_M5AtomU:
       // Countermeasure to the problem that CH552 applies 4v to GPIO0, thus reducing WiFi sensitivity.
       // Setting output_high adds a bias of 3.3v and suppresses overvoltage.
@@ -1709,7 +1709,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
 
     case board_t::board_M5AtomLite:
     case board_t::board_M5AtomMatrix:
-    case board_t::board_M5AtomEcho:
+    case board_t::board_M5AtomVoice:
     case board_t::board_M5AtomPsram:
     case board_t::board_M5AtomU:
     case board_t::board_M5StampPico:
@@ -1749,7 +1749,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
     case board_t::board_M5AtomS3Lite:
     case board_t::board_M5AtomS3U:
     case board_t::board_M5AtomS3R:
-    case board_t::board_M5AtomEchoS3R:
+    case board_t::board_M5AtomVoiceS3R:
       m5gfx::pinMode(GPIO_NUM_41, m5gfx::pin_mode_t::input);
       break;
 
@@ -1991,7 +1991,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
         }
         break;
 
-      case board_t::board_M5AtomEcho:
+      case board_t::board_M5AtomVoice:
         { /// ATOM ECHO builtin PDM mic
           mic_cfg.pin_data_in = GPIO_NUM_23;
           mic_cfg.pin_ws = GPIO_NUM_33;
@@ -2135,7 +2135,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
         }
         break;
 
-      case board_t::board_M5AtomEchoS3R:
+      case board_t::board_M5AtomVoiceS3R:
         if (cfg.internal_mic) {
           cfg.internal_imu = false;
 
@@ -2310,7 +2310,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
         }
         break;
 
-      case board_t::board_M5AtomEcho:
+      case board_t::board_M5AtomVoice:
         if (cfg.internal_spk && (Display.getBoard() != board_t::board_M5AtomDisplay))
         { // for ATOM ECHO
           spk_cfg.pin_bck = GPIO_NUM_19;
@@ -2572,7 +2572,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
 
     case board_t::board_M5AtomLite:
     case board_t::board_M5AtomMatrix:
-    case board_t::board_M5AtomEcho:
+    case board_t::board_M5AtomVoice:
     case board_t::board_M5AtomPsram:
     case board_t::board_M5AtomU:
     case board_t::board_M5StampPico:
@@ -2623,7 +2623,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
     case board_t::board_M5AtomS3Lite:
     case board_t::board_M5AtomS3U:
     case board_t::board_M5AtomS3R:
-    case board_t::board_M5AtomEchoS3R:
+    case board_t::board_M5AtomVoiceS3R:
       use_rawstate_bits = 0b00001;
       btn_rawstate_bits = (!m5gfx::gpio_in(GPIO_NUM_41)) & 1;
       break;
