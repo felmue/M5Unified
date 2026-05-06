@@ -32,11 +32,11 @@ namespace m5
   static constexpr const uint32_t i2c_freq = 100000;
 
 #if !defined (M5UNIFIED_PC_BUILD)
-  static constexpr uint8_t py32pmic_i2c_addr = 0x6E;
+  static constexpr uint8_t m5pm1_i2c_addr = 0x6E;
+
 #if defined (CONFIG_IDF_TARGET_ESP32S3)
   static constexpr uint8_t aw9523_i2c_addr = 0x58;
   static constexpr uint8_t powerhub_i2c_addr = 0x50;
-  static constexpr uint8_t m5pm1_i2c_addr = 0x6E;
   static constexpr int M5PaperS3_CHG_STAT_PIN = GPIO_NUM_4;
 
 #elif defined (CONFIG_IDF_TARGET_ESP32C6)
