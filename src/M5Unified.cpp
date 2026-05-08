@@ -1845,10 +1845,12 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
       m5gfx::pinMode(GPIO_NUM_1, m5gfx::pin_mode_t::input);
       m5gfx::pinMode(GPIO_NUM_9, m5gfx::pin_mode_t::input);
       m5gfx::pinMode(GPIO_NUM_10, m5gfx::pin_mode_t::input);
+      break;
 
     case board_t::board_M5StopWatch:
       m5gfx::pinMode(GPIO_NUM_1, m5gfx::pin_mode_t::input);
       m5gfx::pinMode(GPIO_NUM_2, m5gfx::pin_mode_t::input);
+      break;
 
 #elif defined (CONFIG_IDF_TARGET_ESP32P4)
     case board_t::board_M5UnitPoEP4:
