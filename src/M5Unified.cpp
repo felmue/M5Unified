@@ -95,6 +95,7 @@ static constexpr const uint8_t _pin_table_i2c_ex_in[][5] = {
 { board_t::board_M5PowerHub   , GPIO_NUM_48,GPIO_NUM_45 , GPIO_NUM_16,GPIO_NUM_15 },
 { board_t::board_M5StampS3Bat , GPIO_NUM_47,GPIO_NUM_48 , 255        ,255         },
 { board_t::board_M5PaperColor , GPIO_NUM_2 ,GPIO_NUM_3  , GPIO_NUM_5 ,GPIO_NUM_4  },
+{ board_t::board_M5PaperMono  , GPIO_NUM_48,GPIO_NUM_47 , 255        ,255         },
 { board_t::board_M5StopWatch  , GPIO_NUM_48,GPIO_NUM_47 , GPIO_NUM_11,GPIO_NUM_10 },
 { board_t::board_unknown      , GPIO_NUM_39,GPIO_NUM_38 , GPIO_NUM_1 ,GPIO_NUM_2  }, // AtomS3,AtomS3Lite,AtomS3U
 #elif defined (CONFIG_IDF_TARGET_ESP32C3)
@@ -1847,6 +1848,11 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
       m5gfx::pinMode(GPIO_NUM_10, m5gfx::pin_mode_t::input);
       break;
 
+    case board_t::board_M5PaperMono:
+      m5gfx::pinMode(GPIO_NUM_2, m5gfx::pin_mode_t::input);
+      m5gfx::pinMode(GPIO_NUM_3, m5gfx::pin_mode_t::input);
+      break;
+
     case board_t::board_M5StopWatch:
       m5gfx::pinMode(GPIO_NUM_1, m5gfx::pin_mode_t::input);
       m5gfx::pinMode(GPIO_NUM_2, m5gfx::pin_mode_t::input);
@@ -2694,12 +2700,11 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
     }
 
     case board_t::board_M5DualKey:
-    {
       use_rawstate_bits = 0b00011;
       btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_17)) & 1)
                         | ((!m5gfx::gpio_in(GPIO_NUM_0)) & 1) << 1;
       break;
-    }
+
     case board_t::board_M5StickS3:
       use_rawstate_bits = 0b00011;
       btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_11)) & 1)
@@ -2707,12 +2712,16 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
       break;
 
     case board_t::board_M5PaperColor:
-    {
       use_rawstate_bits = 0b00111;
-      btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_1)) & 1)
+      btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_9)) & 1)
                         | ((!m5gfx::gpio_in(GPIO_NUM_10)) & 1) << 1
-                        | ((!m5gfx::gpio_in(GPIO_NUM_9)) & 1) << 2;
-    }
+                        | ((!m5gfx::gpio_in(GPIO_NUM_1)) & 1) << 2;
+      break;
+
+    case board_t::board_M5PaperMono:
+      use_rawstate_bits = 0b00011;
+      btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_2)) & 1)
+                        | ((!m5gfx::gpio_in(GPIO_NUM_3)) & 1) << 1;
       break;
 
     case board_t::board_M5StopWatch:
