@@ -2825,8 +2825,8 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
 
     case board_t::board_M5PaperColor:
       use_rawstate_bits = 0b00111;
-      btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_9)) & 1)
-                        | ((!m5gfx::gpio_in(GPIO_NUM_10)) & 1) << 1
+      btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_10)) & 1)
+                        | ((!m5gfx::gpio_in(GPIO_NUM_9)) & 1) << 1
                         | ((!m5gfx::gpio_in(GPIO_NUM_1)) & 1) << 2;
       break;
 
