@@ -104,9 +104,10 @@ static constexpr const uint8_t _pin_table_i2c_ex_in[][5] = {
 #elif defined (CONFIG_IDF_TARGET_ESP32C6)
 { board_t::board_M5UnitC6L     ,GPIO_NUM_8 ,GPIO_NUM_10 , 255        ,255         },
 { board_t::board_ArduinoNessoN1,GPIO_NUM_8 ,GPIO_NUM_10 , GPIO_NUM_8 ,GPIO_NUM_10 },
-{ board_t::board_unknown      , 255        ,255         , GPIO_NUM_1 ,GPIO_NUM_2  }, // NanoC6
+{ board_t::board_M5NanoC6     , 255        ,255         , GPIO_NUM_1 ,GPIO_NUM_2  },
+{ board_t::board_unknown      , 255        ,255         , 255        ,255         },
 #elif defined (CONFIG_IDF_TARGET_ESP32H2)
-{ board_t::board_NanoH2       , 255        ,255         , GPIO_NUM_1 ,GPIO_NUM_2  },
+{ board_t::board_M5NanoH2     , 255        ,255         , GPIO_NUM_1 ,GPIO_NUM_2  },
 { board_t::board_unknown      , 255        ,255         , 255        ,255         },
 #elif defined (CONFIG_IDF_TARGET_ESP32P4)
 { board_t::board_M5Tab5       , GPIO_NUM_32,GPIO_NUM_31 , GPIO_NUM_54,GPIO_NUM_53 }, // Tab5
@@ -213,6 +214,7 @@ static constexpr const uint8_t _pin_table_other0[][2] = {
 { board_t::board_M5NanoC6     , GPIO_NUM_20 },
 { board_t::board_M5UnitC6L    , GPIO_NUM_2  },
 #elif defined (CONFIG_IDF_TARGET_ESP32H2)
+{ board_t::board_M5NanoH2     , GPIO_NUM_11 },
 #else
 { board_t::board_M5Stack      , GPIO_NUM_15 },
 { board_t::board_M5StackCore2 , GPIO_NUM_25 },
@@ -1579,6 +1581,12 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
       board = board_t::board_M5NanoC6;
     }
 
+#elif defined (CONFIG_IDF_TARGET_ESP32H2)
+    if (board == board_t::board_unknown)
+    { // NanoH2
+      board = board_t::board_M5NanoH2;
+    }
+
 #elif defined (CONFIG_IDF_TARGET_ESP32P4)
     if (board == board_t::board_unknown)
     {
@@ -1845,6 +1853,12 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
 #elif defined (CONFIG_IDF_TARGET_ESP32C6)
 
     case board_t::board_M5NanoC6:
+      m5gfx::pinMode(GPIO_NUM_9, m5gfx::pin_mode_t::input_pullup);
+      break;
+
+#elif defined (CONFIG_IDF_TARGET_ESP32H2)
+
+    case board_t::board_M5NanoH2:
       m5gfx::pinMode(GPIO_NUM_9, m5gfx::pin_mode_t::input_pullup);
       break;
 
@@ -2839,8 +2853,8 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
 
     case board_t::board_M5PaperColor:
       use_rawstate_bits = 0b00111;
-      btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_9)) & 1)
-                        | ((!m5gfx::gpio_in(GPIO_NUM_10)) & 1) << 1
+      btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_10)) & 1)
+                        | ((!m5gfx::gpio_in(GPIO_NUM_9)) & 1) << 1
                         | ((!m5gfx::gpio_in(GPIO_NUM_1)) & 1) << 2;
       break;
 
@@ -2909,6 +2923,20 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
     default:
       break;
     }
+
+#elif defined (CONFIG_IDF_TARGET_ESP32H2)
+
+    switch (_board)
+    {
+    case board_t::board_M5NanoH2:
+      use_rawstate_bits = 0b00001;
+      btn_rawstate_bits = (!m5gfx::gpio_in(GPIO_NUM_9) ? 0b00001 : 0);
+      break;
+
+    default:
+      break;
+    }
+
 #elif defined (CONFIG_IDF_TARGET_ESP32P4)
 
     switch (_board)

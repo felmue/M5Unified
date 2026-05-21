@@ -267,6 +267,11 @@ namespace m5
         M5.In_I2C.bitOn(m5pm1_i2c_addr, 0x11, 1 << 3, i2c_freq); // Set gpio3 output high
       }
       break;
+    
+    case board_t::board_M5PaperMono:
+      _rtcIntPin = GPIO_NUM_1;
+      _pmic = pmic_t::pmic_m5pm1;
+      break;
 
     case board_t::board_M5Capsule:
       _batAdcCh = ADC1_GPIO6_CHANNEL;
