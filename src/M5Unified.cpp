@@ -168,29 +168,30 @@ static constexpr const uint8_t _pin_table_port_de[][5] = {
 { board_t::board_unknown      , 255        ,255         , 255        ,255         },
 };
 
-static constexpr const uint8_t _pin_table_spi_sd[][5] = {
-                            // clk,mosi,miso,cs
+static constexpr const uint8_t _pin_table_sd[][7] = {
+                            // clk,cmd(MOSI),D0(MISO),D1,D2,D3(CS)
 #if defined (CONFIG_IDF_TARGET_ESP32S3)
-{ board_t::board_M5StackCoreS3, GPIO_NUM_36, GPIO_NUM_37, GPIO_NUM_35, GPIO_NUM_4  },
-{ board_t::board_M5StackCoreS3SE,GPIO_NUM_36,GPIO_NUM_37, GPIO_NUM_35, GPIO_NUM_4  },
-{ board_t::board_M5StackChan  , GPIO_NUM_36, GPIO_NUM_37, GPIO_NUM_35, GPIO_NUM_4 },
-{ board_t::board_M5Capsule    , GPIO_NUM_14, GPIO_NUM_12, GPIO_NUM_39, GPIO_NUM_11 },
-{ board_t::board_M5Cardputer  , GPIO_NUM_40, GPIO_NUM_14, GPIO_NUM_39, GPIO_NUM_12 },
-{ board_t::board_M5CardputerADV,GPIO_NUM_40, GPIO_NUM_14, GPIO_NUM_39, GPIO_NUM_12 },
-{ board_t::board_M5PaperS3    , GPIO_NUM_39, GPIO_NUM_38, GPIO_NUM_40, GPIO_NUM_47 },
-{ board_t::board_M5StampPLC   , GPIO_NUM_7,  GPIO_NUM_8,  GPIO_NUM_9,  GPIO_NUM_10 },
-{ board_t::board_M5PaperColor , GPIO_NUM_15, GPIO_NUM_13, GPIO_NUM_14, GPIO_NUM_47 },
+{ board_t::board_M5StackCoreS3, GPIO_NUM_36, GPIO_NUM_37, GPIO_NUM_35, 255        , 255       , GPIO_NUM_4  },
+{ board_t::board_M5StackCoreS3SE,GPIO_NUM_36,GPIO_NUM_37, GPIO_NUM_35, 255        , 255       , GPIO_NUM_4  },
+{ board_t::board_M5StackChan  , GPIO_NUM_36, GPIO_NUM_37, GPIO_NUM_35, 255        , 255       , GPIO_NUM_4  },
+{ board_t::board_M5Capsule    , GPIO_NUM_14, GPIO_NUM_12, GPIO_NUM_39, 255        , 255       , GPIO_NUM_11 },
+{ board_t::board_M5Cardputer  , GPIO_NUM_40, GPIO_NUM_14, GPIO_NUM_39, 255        , 255       , GPIO_NUM_12 },
+{ board_t::board_M5CardputerADV,GPIO_NUM_40, GPIO_NUM_14, GPIO_NUM_39, 255        , 255       , GPIO_NUM_12 },
+{ board_t::board_M5PaperS3    , GPIO_NUM_39, GPIO_NUM_38, GPIO_NUM_40, 255        , 255       , GPIO_NUM_47 },
+{ board_t::board_M5StampPLC   , GPIO_NUM_7,  GPIO_NUM_8,  GPIO_NUM_9,  255        , 255       , GPIO_NUM_10 },
+{ board_t::board_M5PaperColor , GPIO_NUM_15, GPIO_NUM_13, GPIO_NUM_14, 255        , 255       , GPIO_NUM_47 },
+{ board_t::board_M5PaperMono  , GPIO_NUM_13, GPIO_NUM_12, GPIO_NUM_11, GPIO_NUM_10, GPIO_NUM_9, GPIO_NUM_8  },
 #elif defined (CONFIG_IDF_TARGET_ESP32C3)
 #elif defined (CONFIG_IDF_TARGET_ESP32C6)
 #elif defined (CONFIG_IDF_TARGET_ESP32H2)
 #elif defined (CONFIG_IDF_TARGET_ESP32P4)
-{ board_t::board_M5Tab5       , GPIO_NUM_43,GPIO_NUM_44, GPIO_NUM_39, GPIO_NUM_42 },
+{ board_t::board_M5Tab5       , GPIO_NUM_43, GPIO_NUM_44, GPIO_NUM_39, GPIO_NUM_40, GPIO_NUM_41, GPIO_NUM_42 },
 #else
-{ board_t::board_M5Stack      , GPIO_NUM_18, GPIO_NUM_23, GPIO_NUM_19, GPIO_NUM_4  },
-{ board_t::board_M5StackCore2 , GPIO_NUM_18, GPIO_NUM_23, GPIO_NUM_38, GPIO_NUM_4  },
-{ board_t::board_M5Paper      , GPIO_NUM_14, GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_4  },
+{ board_t::board_M5Stack      , GPIO_NUM_18, GPIO_NUM_23, GPIO_NUM_19, 255        , 255        , GPIO_NUM_4  },
+{ board_t::board_M5StackCore2 , GPIO_NUM_18, GPIO_NUM_23, GPIO_NUM_38, 255        , 255        , GPIO_NUM_4  },
+{ board_t::board_M5Paper      , GPIO_NUM_14, GPIO_NUM_12, GPIO_NUM_13, 255        , 255        , GPIO_NUM_4  },
 #endif
-{ board_t::board_unknown      , 255        , 255        , 255        , 255         },
+{ board_t::board_unknown      , 255        , 255        , 255        , 255        , 255        , 255         },
 };
 
 static constexpr const uint8_t _pin_table_other0[][2] = {
@@ -371,7 +372,7 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
       { _pin_table_i2c_ex_in, sizeof(_pin_table_i2c_ex_in[0]) },
       { _pin_table_port_bc, sizeof(_pin_table_port_bc[0]) },
       { _pin_table_port_de, sizeof(_pin_table_port_de[0]) },
-      { _pin_table_spi_sd, sizeof(_pin_table_spi_sd[0]) },
+      { _pin_table_sd, sizeof(_pin_table_sd[0]) },
       { _pin_table_other0, sizeof(_pin_table_other0[0]) },
       { _pin_table_other1, sizeof(_pin_table_other1[0]) },
       { _pin_table_mbus, sizeof(_pin_table_mbus[0]) },
