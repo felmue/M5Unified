@@ -34,6 +34,7 @@
 #include "utility/led/LED_Strip_Class.hpp"
 #include "utility/led/LED_PMIC_Class.hpp"
 #include "utility/led/LED_PowerHub_Class.hpp"
+#include "utility/led/LED_PaperMono_Class.hpp"
 
 #endif
 
@@ -105,6 +106,7 @@ static constexpr const uint8_t _pin_table_i2c_ex_in[][5] = {
 { board_t::board_ArduinoNessoN1,GPIO_NUM_8 ,GPIO_NUM_10 , GPIO_NUM_8 ,GPIO_NUM_10 },
 { board_t::board_unknown      , 255        ,255         , GPIO_NUM_1 ,GPIO_NUM_2  }, // NanoC6
 #elif defined (CONFIG_IDF_TARGET_ESP32H2)
+{ board_t::board_NanoH2       , 255        ,255         , GPIO_NUM_1 ,GPIO_NUM_2  },
 { board_t::board_unknown      , 255        ,255         , 255        ,255         },
 #elif defined (CONFIG_IDF_TARGET_ESP32P4)
 { board_t::board_M5Tab5       , GPIO_NUM_32,GPIO_NUM_31 , GPIO_NUM_54,GPIO_NUM_53 }, // Tab5
@@ -1692,6 +1694,10 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
       Led.setLedInstance(busled);
       return;
     }
+    case board_t::board_M5PaperMono:
+      Led.setLedInstance(std::make_shared<m5::LED_PaperMono_Class>());
+      return;
+
     case board_t::board_M5PaperColor:
       led_count = 2;
       break;
@@ -2036,6 +2042,14 @@ static constexpr const uint8_t _pin_table_mbus[][31] = {
           mic_cfg.i2s_port = I2S_NUM_1;
           mic_cfg.input_channel = input_channel_t::input_only_left;
           mic_enable_cb = _microphone_enabled_cb_papercolor;
+        }
+      break;
+
+      case board_t::board_M5PaperMono:
+        if (cfg.internal_mic)
+        { /// builtin PDM mic
+          mic_cfg.pin_ws = GPIO_NUM_45;
+          mic_cfg.pin_data_in = GPIO_NUM_46;
         }
       break;
 
