@@ -38,6 +38,7 @@ namespace m5
   static constexpr uint8_t aw9523_i2c_addr = 0x58;
   static constexpr uint8_t powerhub_i2c_addr = 0x50;
   static constexpr uint8_t m5ioe1_i2c_addr = 0x4F;
+  static constexpr uint8_t ip2315_i2c_addr = 0x75; // M5PaperMono USB fast-charger
   static constexpr int M5PaperS3_CHG_STAT_PIN = GPIO_NUM_4;
 
 #elif defined (CONFIG_IDF_TARGET_ESP32C6)
@@ -271,8 +272,18 @@ namespace m5
     case board_t::board_M5PaperMono:
       _rtcIntPin = GPIO_NUM_1;
       _pmic = pmic_t::pmic_m5pm1;
-      // PWR_CFG(0x06) is cleared to 0 on reset/download; re-enable battery charging (CHG_EN, bit0).
-      M5.In_I2C.bitOn(m5pm1_i2c_addr, 0x06, 1 << 0, i2c_freq);
+      // M5PaperMono charging is controlled by the IP2316 charger (not PM1).
+      // Enable IP2316 readout/control by driving IOE1 IO11 ("CHARGE READ") high.
+      // IP2316 stays off the I2C bus while IO11 is low, and answers ~1.3ms after high
+      // (measured), so polling its address is enough; no fixed startup delay is needed.
+      // IO11 = bit10 of the 16-bit GPIO regs = bit2 of the high byte (P14-P9).
+      M5.In_I2C.writeRegister8(m5ioe1_i2c_addr, 0x23, 0x00, i2c_freq); // I2C_CFG: disable IOE1 idle-sleep
+      M5.In_I2C.bitOff(m5ioe1_i2c_addr, 0x14, 1 << 2, i2c_freq); // GPIO_DRV_H: IO11 push-pull
+      M5.In_I2C.bitOn (m5ioe1_i2c_addr, 0x04, 1 << 2, i2c_freq); // GPIO_MODE_H: IO11 output
+      M5.In_I2C.bitOn (m5ioe1_i2c_addr, 0x06, 1 << 2, i2c_freq); // GPIO_OUT_H: IO11 high
+      // Wait for the IP2316 to wake, then enable battery charging (SYS_CTL1 0x01 bit0 = EN_CHG).
+      for (int i = 0; i < 64 && !M5.In_I2C.scanID(ip2315_i2c_addr, i2c_freq); ++i) {}
+      M5.In_I2C.bitOn(ip2315_i2c_addr, 0x01, 1 << 0, i2c_freq);
       break;
 
     case board_t::board_M5Capsule:
@@ -1654,6 +1665,13 @@ namespace m5
         if (M5.getBoard() == board_t::board_M5PaperColor) {
             return;
         }
+        // M5PaperMono: charging is controlled by the IP2316 charger, not PM1.
+        // IP2316 SYS_CTL1 (0x01) bit0 = EN_CHG. (IO11 was driven high in begin().)
+        if (M5.getBoard() == board_t::board_M5PaperMono) {
+          if (enable) { M5.In_I2C.bitOn (ip2315_i2c_addr, 0x01, 1 << 0, i2c_freq); }
+          else        { M5.In_I2C.bitOff(ip2315_i2c_addr, 0x01, 1 << 0, i2c_freq); }
+          return;
+        }
         // Control charge enable: register 0x06 bit 0 (1=enable, 0=disable)
         uint8_t reg_val = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x06, i2c_freq);
         if (enable) {
@@ -1893,10 +1911,18 @@ namespace m5
         case board_t::board_M5PaperMono:
         {
           // PM1 PWR_SRC (0x04) [2:0]: 0=5VIN / 1=5VINOUT / 2=BAT
-          // On external power (not running from battery) we treat it as charging.
-          // (The precise "charge complete" state requires the IP2315 charger IC.)
+          // Running from battery (no external power) -> not charging.
           uint8_t pwr_src = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x04, i2c_freq) & 0x07;
-          return (pwr_src == 0x02) ? is_charging_t::is_discharging : is_charging_t::is_charging;
+          if (pwr_src == 0x02) { return is_charging_t::is_discharging; }
+          // External power present. The IP2316 charger (IO11 enabled in begin()) reports
+          // its state in REG_CHG_STAT(0xC7): bit7 = charging in progress (measured:
+          // 0x82 charging / 0x45 charge-complete / 0x00 charge-disabled).
+          if (M5.In_I2C.scanID(ip2315_i2c_addr, i2c_freq))
+          {
+            uint8_t chg_stat = M5.In_I2C.readRegister8(ip2315_i2c_addr, 0xC7, i2c_freq);
+            return (chg_stat & (1 << 7)) ? is_charging_t::is_charging : is_charging_t::is_discharging;
+          }
+          return is_charging_t::is_discharging; // fallback: charger not responding -> not charging
         }
         break;
 
