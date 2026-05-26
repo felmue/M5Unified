@@ -271,6 +271,8 @@ namespace m5
     case board_t::board_M5PaperMono:
       _rtcIntPin = GPIO_NUM_1;
       _pmic = pmic_t::pmic_m5pm1;
+      // PWR_CFG(0x06) is cleared to 0 on reset/download; re-enable battery charging (CHG_EN, bit0).
+      M5.In_I2C.bitOn(m5pm1_i2c_addr, 0x06, 1 << 0, i2c_freq);
       break;
 
     case board_t::board_M5Capsule:
@@ -577,6 +579,18 @@ namespace m5
 
 
 #endif
+
+    if (_pmic == pmic_t::pmic_m5pm1)
+    {
+      // reg: 0x09(I2C_CFG) - Set to 0x00 to disable I2C idle sleep mode.
+      // PMIC is always-on powered, and with battery power, shutdown doesn't reset the chip.
+      // This register may have been modified elsewhere, causing PMIC communication issues.
+      // Explicitly set it here during initialization to ensure proper operation.
+      M5.In_I2C.writeRegister8(m5pm1_i2c_addr, 0x09, 0x00, i2c_freq);
+
+      // PM1 watchdog is enabled by default; disable it to avoid periodic reset.
+      M5.In_I2C.writeRegister8(m5pm1_i2c_addr, 0x0A, 0x00, i2c_freq); // WDT_CNT = 0 (disable)
+    }
 
 #endif
     return (_pmic != pmic_t::pmic_unknown);
@@ -1876,6 +1890,16 @@ namespace m5
     default:
       switch (M5.getBoard()) {
 #if defined (CONFIG_IDF_TARGET_ESP32S3)
+        case board_t::board_M5PaperMono:
+        {
+          // PM1 PWR_SRC (0x04) [2:0]: 0=5VIN / 1=5VINOUT / 2=BAT
+          // On external power (not running from battery) we treat it as charging.
+          // (The precise "charge complete" state requires the IP2315 charger IC.)
+          uint8_t pwr_src = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x04, i2c_freq) & 0x07;
+          return (pwr_src == 0x02) ? is_charging_t::is_discharging : is_charging_t::is_charging;
+        }
+        break;
+
         case board_t::board_M5StickS3:
         {
           // PM1_G0 is charging status input pin, low=charging / high=not charging
@@ -2003,6 +2027,19 @@ namespace m5
 
     case pmic_t::pmic_py32pmic:
       return PY32pmic.getPekPress();
+
+    case pmic_t::pmic_m5pm1:
+      {
+        // PM1 IRQ_STATUS3 (0x42): bit0=Click / bit1=Wakeup / bit2=DoubleClick
+        // (Long press is handled as power-off/reset by the PMIC hardware.)
+        uint8_t irq3 = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x42, i2c_freq);
+        if (irq3 & ((1 << 0) | (1 << 2)))
+        { // a (double) click was detected; clear all button IRQ flags (write 0 to clear).
+          M5.In_I2C.writeRegister8(m5pm1_i2c_addr, 0x42, 0x00, i2c_freq);
+          return 2; // short clicked
+        }
+      }
+      return 0;
 #endif
 
 #endif
