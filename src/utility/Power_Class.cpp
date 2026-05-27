@@ -37,6 +37,8 @@ namespace m5
 #if defined (CONFIG_IDF_TARGET_ESP32S3)
   static constexpr uint8_t aw9523_i2c_addr = 0x58;
   static constexpr uint8_t powerhub_i2c_addr = 0x50;
+  static constexpr uint8_t m5ioe1_i2c_addr = 0x4F;
+  static constexpr uint8_t ip2315_i2c_addr = 0x75; // M5PaperMono USB fast-charger
   static constexpr int M5PaperS3_CHG_STAT_PIN = GPIO_NUM_4;
 
 #elif defined (CONFIG_IDF_TARGET_ESP32C6)
@@ -195,6 +197,33 @@ namespace m5
       }
       break;
 
+    case board_t::board_M5StopWatch:
+      _pmic = pmic_t::pmic_m5pm1;
+      {
+        // M5PM1: GPIO2 as GPIO input (charge status on G2; low = charging). REG_GPIO_FUNC0 0x16 [5:4]=00.
+        uint8_t reg_val = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x16, i2c_freq);
+        reg_val &= static_cast<uint8_t>(~(0x03u << 4));
+        M5.In_I2C.writeRegister8(m5pm1_i2c_addr, 0x16, reg_val, i2c_freq);
+        reg_val = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x10, i2c_freq);
+        reg_val &= static_cast<uint8_t>(~(1u << 2));  // REG_GPIO_MODE: 0=input
+        M5.In_I2C.writeRegister8(m5pm1_i2c_addr, 0x10, reg_val, i2c_freq);
+
+        // M5IOE1: PWM1 drives IO9 (G9 motor). REG_PWM_FREQ 0x25/0x26 Hz LE; REG_PWM1_DUTY 0x1B/0x1C (bit7 EN).
+        constexpr uint16_t motor_pwm_hz = 2000;
+        M5.In_I2C.writeRegister8(m5ioe1_i2c_addr, 0x23, 0x00, i2c_freq);  // REG_I2C_CFG: disable I2C sleep
+        uint8_t pwm_freq_le[2] = {
+          static_cast<uint8_t>(motor_pwm_hz & 0xFF),
+          static_cast<uint8_t>((motor_pwm_hz >> 8) & 0xFF),
+        };
+        M5.In_I2C.writeRegister(m5ioe1_i2c_addr, 0x25, pwm_freq_le, sizeof(pwm_freq_le), i2c_freq);
+        // IO9 (G9 motor / PWM1): push-pull output, duty off until setVibration
+        M5.In_I2C.bitOff(m5ioe1_i2c_addr, 0x14, 0b00000001, i2c_freq);
+        M5.In_I2C.bitOn(m5ioe1_i2c_addr, 0x04, 0b00000001, i2c_freq);
+        M5.In_I2C.writeRegister8(m5ioe1_i2c_addr, 0x1B, 0x00, i2c_freq);
+        M5.In_I2C.writeRegister8(m5ioe1_i2c_addr, 0x1C, 0x00, i2c_freq);  // PWM off at boot
+      }
+      break;
+
     case board_t::board_M5StampS3Bat:
       _pmic = pmic_t::pmic_m5pm1;
       {
@@ -238,6 +267,23 @@ namespace m5
         M5.In_I2C.bitOff(m5pm1_i2c_addr, 0x13, 1 << 3, i2c_freq); // Set gpio3 push-pull mode
         M5.In_I2C.bitOn(m5pm1_i2c_addr, 0x11, 1 << 3, i2c_freq); // Set gpio3 output high
       }
+      break;
+    
+    case board_t::board_M5PaperMono:
+      _rtcIntPin = GPIO_NUM_1;
+      _pmic = pmic_t::pmic_m5pm1;
+      // M5PaperMono charging is controlled by the IP2316 charger (not PM1).
+      // Enable IP2316 readout/control by driving IOE1 IO11 ("CHARGE READ") high.
+      // IP2316 stays off the I2C bus while IO11 is low, and answers ~1.3ms after high
+      // (measured), so polling its address is enough; no fixed startup delay is needed.
+      // IO11 = bit10 of the 16-bit GPIO regs = bit2 of the high byte (P14-P9).
+      M5.In_I2C.writeRegister8(m5ioe1_i2c_addr, 0x23, 0x00, i2c_freq); // I2C_CFG: disable IOE1 idle-sleep
+      M5.In_I2C.bitOff(m5ioe1_i2c_addr, 0x14, 1 << 2, i2c_freq); // GPIO_DRV_H: IO11 push-pull
+      M5.In_I2C.bitOn (m5ioe1_i2c_addr, 0x04, 1 << 2, i2c_freq); // GPIO_MODE_H: IO11 output
+      M5.In_I2C.bitOn (m5ioe1_i2c_addr, 0x06, 1 << 2, i2c_freq); // GPIO_OUT_H: IO11 high
+      // Wait for the IP2316 to wake, then enable battery charging (SYS_CTL1 0x01 bit0 = EN_CHG).
+      for (int i = 0; i < 64 && !M5.In_I2C.scanID(ip2315_i2c_addr, i2c_freq); ++i) {}
+      M5.In_I2C.bitOn(ip2315_i2c_addr, 0x01, 1 << 0, i2c_freq);
       break;
 
     case board_t::board_M5Capsule:
@@ -545,6 +591,18 @@ namespace m5
 
 #endif
 
+    if (_pmic == pmic_t::pmic_m5pm1)
+    {
+      // reg: 0x09(I2C_CFG) - Set to 0x00 to disable I2C idle sleep mode.
+      // PMIC is always-on powered, and with battery power, shutdown doesn't reset the chip.
+      // This register may have been modified elsewhere, causing PMIC communication issues.
+      // Explicitly set it here during initialization to ensure proper operation.
+      M5.In_I2C.writeRegister8(m5pm1_i2c_addr, 0x09, 0x00, i2c_freq);
+
+      // PM1 watchdog is enabled by default; disable it to avoid periodic reset.
+      M5.In_I2C.writeRegister8(m5pm1_i2c_addr, 0x0A, 0x00, i2c_freq); // WDT_CNT = 0 (disable)
+    }
+
 #endif
     return (_pmic != pmic_t::pmic_unknown);
   }
@@ -633,6 +691,7 @@ namespace m5
       break;
 
     case board_t::board_M5StickS3:
+    case board_t::board_M5StopWatch:
     case board_t::board_M5PaperColor:
       if (_pmic == pmic_t::pmic_m5pm1)
       {
@@ -769,6 +828,7 @@ namespace m5
       break;
 
     case board_t::board_M5StickS3:
+    case board_t::board_M5StopWatch:
     case board_t::board_M5PaperColor:
       {
         // Read 5V output status: register 0x06 bit 3
@@ -1605,6 +1665,13 @@ namespace m5
         if (M5.getBoard() == board_t::board_M5PaperColor) {
             return;
         }
+        // M5PaperMono: charging is controlled by the IP2316 charger, not PM1.
+        // IP2316 SYS_CTL1 (0x01) bit0 = EN_CHG. (IO11 was driven high in begin().)
+        if (M5.getBoard() == board_t::board_M5PaperMono) {
+          if (enable) { M5.In_I2C.bitOn (ip2315_i2c_addr, 0x01, 1 << 0, i2c_freq); }
+          else        { M5.In_I2C.bitOff(ip2315_i2c_addr, 0x01, 1 << 0, i2c_freq); }
+          return;
+        }
         // Control charge enable: register 0x06 bit 0 (1=enable, 0=disable)
         uint8_t reg_val = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x06, i2c_freq);
         if (enable) {
@@ -1841,7 +1908,25 @@ namespace m5
     default:
       switch (M5.getBoard()) {
 #if defined (CONFIG_IDF_TARGET_ESP32S3)
-      case board_t::board_M5StickS3:
+        case board_t::board_M5PaperMono:
+        {
+          // PM1 PWR_SRC (0x04) [2:0]: 0=5VIN / 1=5VINOUT / 2=BAT
+          // Running from battery (no external power) -> not charging.
+          uint8_t pwr_src = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x04, i2c_freq) & 0x07;
+          if (pwr_src == 0x02) { return is_charging_t::is_discharging; }
+          // External power present. The IP2316 charger (IO11 enabled in begin()) reports
+          // its state in REG_CHG_STAT(0xC7): bit7 = charging in progress (measured:
+          // 0x82 charging / 0x45 charge-complete / 0x00 charge-disabled).
+          if (M5.In_I2C.scanID(ip2315_i2c_addr, i2c_freq))
+          {
+            uint8_t chg_stat = M5.In_I2C.readRegister8(ip2315_i2c_addr, 0xC7, i2c_freq);
+            return (chg_stat & (1 << 7)) ? is_charging_t::is_charging : is_charging_t::is_discharging;
+          }
+          return is_charging_t::is_discharging; // fallback: charger not responding -> not charging
+        }
+        break;
+
+        case board_t::board_M5StickS3:
         {
           // PM1_G0 is charging status input pin, low=charging / high=not charging
           uint8_t reg_val = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x12, i2c_freq);
@@ -1849,7 +1934,8 @@ namespace m5
         }
         break;
       
-      case board_t::board_M5StampS3Bat:
+        case board_t::board_M5StopWatch: // M5PM1_G2
+        case board_t::board_M5StampS3Bat: // M5PM1_G2
         {
           // PM1_G2 is charging status input pin, low=charging / high=not charging
           uint8_t reg_val = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x12, i2c_freq);
@@ -1908,6 +1994,7 @@ namespace m5
       }
 
       case board_t::board_M5StampS3Bat:
+      case board_t::board_M5StopWatch:
       case board_t::board_M5StickS3: {
         // Read output voltage from device PM1: register 0x26 (5VOUT_L) and 0x27 (5VOUT_H)
         // Unit: mV, format: (5VOUT_H << 8) | 5VOUT_L
@@ -1966,6 +2053,19 @@ namespace m5
 
     case pmic_t::pmic_py32pmic:
       return PY32pmic.getPekPress();
+
+    case pmic_t::pmic_m5pm1:
+      {
+        // PM1 IRQ_STATUS3 (0x42): bit0=Click / bit1=Wakeup / bit2=DoubleClick
+        // (Long press is handled as power-off/reset by the PMIC hardware.)
+        uint8_t irq3 = M5.In_I2C.readRegister8(m5pm1_i2c_addr, 0x42, i2c_freq);
+        if (irq3 & ((1 << 0) | (1 << 2)))
+        { // a (double) click was detected; clear all button IRQ flags (write 0 to clear).
+          M5.In_I2C.writeRegister8(m5pm1_i2c_addr, 0x42, 0x00, i2c_freq);
+          return 2; // short clicked
+        }
+      }
+      return 0;
 #endif
 
 #endif
@@ -1997,6 +2097,27 @@ namespace m5
 
   void Power_Class::setVibration(uint8_t level)
   {
+#if !defined (M5UNIFIED_PC_BUILD) && defined (CONFIG_IDF_TARGET_ESP32S3)
+    if (M5.getBoard() == board_t::board_M5StopWatch)
+    {
+      // M5IOE1 PWM1 (0x1B/0x1C) -> pin IO9 / G9 motor; duty 12-bit in [11:0], EN=bit7 of high byte.
+      if (level == 0) {
+        uint8_t pwm_off[2] = { 0x00, 0x00 };
+        M5.In_I2C.writeRegister(m5ioe1_i2c_addr, 0x1B, pwm_off, sizeof(pwm_off), i2c_freq);
+      } else {
+        // PWM needs IO9 in output mode (M5IOE1 pin index 8 -> GPIO_MODE_H bit0).
+        M5.In_I2C.bitOff(m5ioe1_i2c_addr, 0x14, 0b00000001, i2c_freq);
+        M5.In_I2C.bitOn(m5ioe1_i2c_addr, 0x04, 0b00000001, i2c_freq);
+        uint16_t duty12 = static_cast<uint16_t>((static_cast<uint32_t>(level) * 0x0FFFu) / 255u);
+        uint8_t pwm_on[2] = {
+          static_cast<uint8_t>(duty12 & 0xFF),
+          static_cast<uint8_t>(((duty12 >> 8) & 0x0Fu) | 0x80u),
+        };
+        M5.In_I2C.writeRegister(m5ioe1_i2c_addr, 0x1B, pwm_on, sizeof(pwm_on), i2c_freq);
+      }
+      return;
+    }
+#endif
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
     if (M5.getBoard() == board_t::board_M5StackCore2)
     {

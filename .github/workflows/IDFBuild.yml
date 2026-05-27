@@ -75,13 +75,13 @@ jobs:
         run: |
           git clone --depth 1 --branch "${{ steps.m5gfx.outputs.branch }}" \
             "https://github.com/${{ steps.m5gfx.outputs.repo }}.git" \
-            "$GITHUB_WORKSPACE/_deps/M5GFX"
+            "$GITHUB_WORKSPACE/_deps/m5gfx"
 
       - name: Build
         working-directory: examples/Test/build_test
         shell: bash
         env:
-          M5GFX_PATH: ${{ github.workspace }}/_deps/M5GFX
+          M5GFX_PATH: ${{ github.workspace }}/_deps/m5gfx
         run: |
           . $IDF_PATH/export.sh
           idf.py set-target ${{ matrix.target }}
